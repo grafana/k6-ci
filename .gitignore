@@ -1,0 +1,6 @@
+.vscode
+*.sublime-workspace
+*.log
+*.syso
+.idea
+*.DS_Store
