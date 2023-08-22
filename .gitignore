@@ -4,3 +4,6 @@
 *.syso
 .idea
 *.DS_Store
+.golangci.yml
+vendor
+k6
