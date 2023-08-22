@@ -2,6 +2,9 @@
 # We created it to maintain the same standards that has the k6's core.
 name: Extension Check
 on:
+  # actually makes this workflow re-usable
+  workflow_call:
+  # Enable manually triggering this workflow via the API or web UI
   workflow_dispatch:
   push:
     branches:
