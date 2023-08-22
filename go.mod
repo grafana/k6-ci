@@ -1,6 +1,6 @@
 module github.com/grafana/k6-ci
 
-go 1.20.0
+go 1.20
 
 require go.k6.io/k6 v0.46.0
 
