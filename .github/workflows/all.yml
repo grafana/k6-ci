@@ -22,24 +22,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - name: Install Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v5
         with:
           go-version: 1.21.x
       - name: Check dependencies
         run: |
-            go version
-            test -z "$(go mod tidy  && git status --porcelain)"
-            go mod verify
+          go version
+          test -z "$(go mod tidy  && git status --porcelain)"
+          go mod verify
 
   lint:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - name: Run k6's golangci-lint CI
@@ -49,28 +49,27 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        go-version: [1.20.x, 1.21.x, tip]
-        platform: [ubuntu-latest, windows-latest]
+        go-version: [ 1.20.x, 1.21.x, tip ]
+        platform: [ ubuntu-latest, windows-latest ]
     runs-on: ${{ matrix.platform }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Install Go ${{ matrix.go-version }}
         if: matrix.go-version != 'tip'
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ matrix.go-version }}
-      - name: Install Go stable
+      - name: Download Go tip
         if: matrix.go-version == 'tip'
-        uses: actions/setup-go@v3
-        with:
-          go-version: 1.x
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release download ${{ matrix.platform }} --repo grafana/gotip --pattern 'go.zip'
       - name: Install Go tip
-        shell: bash
         if: matrix.go-version == 'tip'
         run: |
-          go install golang.org/dl/gotip@latest
-          gotip download
+          unzip go.zip -d $HOME/sdk
           echo "GOROOT=$HOME/sdk/gotip" >> "$GITHUB_ENV"
           echo "GOPATH=$HOME/go" >> "$GITHUB_ENV"
           echo "$HOME/go/bin" >> "$GITHUB_PATH"
@@ -85,9 +84,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Install Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v5
         with:
           go-version: 1.21.x
       - name: Check build
