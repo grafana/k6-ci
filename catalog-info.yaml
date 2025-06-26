@@ -1,0 +1,13 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: k6-ci
+  title: k6-ci
+  description: |
+    This repository contains the collection of the re-usable CI's workflows and GitHub actions for k6 and k6 extension development.
+  annotations:
+    github.com/project-slug: grafana/k6-ci
+spec:
+  type: library
+  owner: group:default/k6-core
+  lifecycle: production
