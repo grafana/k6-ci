@@ -32,6 +32,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: 1.25.x
+          cache: false # against cache-poisoning
       - name: Check dependencies
         run: |
           go version
@@ -63,6 +64,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: ${{ matrix.go-version }}
+          cache: false # against cache-poisoning
       - name: Download Go tip
         if: matrix.go-version == 'tip'
         env:
@@ -92,6 +94,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: 1.25.x
+          cache: false # against cache-poisoning
       - name: Check build
         run: |
           go version
