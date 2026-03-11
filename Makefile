@@ -34,7 +34,7 @@ test:
 ## lint: Runs the linters.
 lint: linter-config check-linter-version
 	echo "Running linters..."
-	golangci-lint run --out-format=tab ./...
+	golangci-lint run ./...
 
 ## check: Runs the linters and tests.
 check: lint test
