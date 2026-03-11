@@ -30,6 +30,6 @@ func (*RootModule) NewModuleInstance(_ modules.VU) modules.Instance {
 // Exports returns the exports of the grpc module.
 func (mi *ModuleInstance) Exports() modules.Exports {
 	return modules.Exports{
-		Named: map[string]interface{}{},
+		Named: map[string]any{},
 	}
 }
