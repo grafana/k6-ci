@@ -4,6 +4,11 @@ name: Extension Check
 on:
   # actually makes this workflow re-usable
   workflow_call:
+    inputs:
+      skip-extension-testing:
+        required: false
+        default: false
+        type: boolean
   # Enable manually triggering this workflow via the API or web UI
   workflow_dispatch:
     inputs:
