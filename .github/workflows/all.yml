@@ -6,6 +6,11 @@ on:
   workflow_call:
   # Enable manually triggering this workflow via the API or web UI
   workflow_dispatch:
+    inputs:
+      skip-extension-testing:
+        required: false
+        default: false
+        type: boolean
   push:
     branches:
       - main
@@ -86,8 +91,9 @@ jobs:
           go version
           go test -race -timeout 800s ./...
 
-  test-build:
+  extension-build-testing:
     runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.skip-extension-testing != true }}
     steps:
       - name: Checkout code
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
