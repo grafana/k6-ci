@@ -59,7 +59,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Run k6's golangci-lint CI
-        uses: grafana/k6/.github/actions/lint@master
+        uses: grafana/k6/.github/actions/lint@cfcf867b2404808a9a2dfbdcb0845ec1966a7d66 # master
 
   test-go-versions:
     strategy:
