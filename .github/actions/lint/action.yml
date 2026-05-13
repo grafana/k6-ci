@@ -1,0 +1,38 @@
+name: golangci-lint-k6
+description: Run golangci-lint with the k6-ci ruleset, applying the caller's optional .golangci.patch.
+
+runs:
+  using: composite
+  steps:
+    - name: Install Go
+      uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
+      with:
+        go-version: 1.26.x
+        check-latest: true
+    - name: Build golangci config
+      shell: bash
+      env:
+        GITHUB_ACTION_REF: ${{ github.action_ref }}
+      run: |
+        ref="${GITHUB_ACTION_REF:-main}"
+        cfg_dir="${GITHUB_WORKSPACE}/.k6-ci-lint"
+        cfg="${cfg_dir}/.golangci.yml"
+        mkdir -p "${cfg_dir}"
+        rules_url="https://raw.githubusercontent.com/grafana/k6-ci/${ref}/.golangci.yml"
+        echo "Downloading '${rules_url}' ..."
+        curl --silent --show-error --fail --no-location "${rules_url}" --output "${cfg}"
+
+        patch_file="${GITHUB_WORKSPACE}/.golangci.patch"
+        if [ -f "${patch_file}" ]; then
+          echo "Applying '${patch_file}' ..."
+          git -C "${GITHUB_WORKSPACE}" apply --directory=.k6-ci-lint "${patch_file}"
+        fi
+
+        echo "GolangCIVersion=$(head -n 1 "${cfg}" | tr -d '# ')" >> "${GITHUB_OUTPUT}"
+        echo "config=${cfg}" >> "${GITHUB_OUTPUT}"
+      id: cfg
+    - name: golangci-lint
+      uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
+      with:
+        version: ${{ steps.cfg.outputs.GolangCIVersion }}
+        args: "--config=${{ steps.cfg.outputs.config }}"
