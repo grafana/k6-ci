@@ -9,6 +9,18 @@ on:
         required: false
         default: false
         type: boolean
+      skip-tests:
+        required: false
+        default: false
+        type: boolean
+      k6-ci-ref:
+        required: false
+        default: main
+        type: string
+        description: >
+          The ref of grafana/k6-ci to download .golangci.yml from. Defaults to
+          `main`. Callers that pin this workflow to a SHA should pass the same
+          SHA here to get a matching config.
   # Enable manually triggering this workflow via the API or web UI
   workflow_dispatch:
     inputs:
@@ -16,6 +28,14 @@ on:
         required: false
         default: false
         type: boolean
+      skip-tests:
+        required: false
+        default: false
+        type: boolean
+      k6-ci-ref:
+        required: false
+        default: main
+        type: string
   push:
     branches:
       - main
@@ -57,15 +77,41 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
         with:
+          persist-credentials: false
           fetch-depth: 0
-      - name: Run k6's golangci-lint CI
-        # Same repo as this workflow. Must point at a ref of grafana/k6-ci
-        # because `./` in a workflow_call resolves to the caller's workspace,
-        # not k6-ci's. Keep this ref aligned with releases of this workflow;
-        # bump to @main (or a tagged release) once this branch lands.
-        uses: grafana/k6-ci/.github/actions/lint@72a6e5968a5e94ad268c209630a87f3bdce47c16 # lint-action branch HEAD
+      - name: Install Go
+        uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6
+        with:
+          go-version: 1.26.x
+          check-latest: true
+      - name: Build golangci config
+        env:
+          K6_CI_REF: ${{ inputs.k6-ci-ref }}
+        run: |
+          cfg_dir="${GITHUB_WORKSPACE}/.k6-ci-lint"
+          cfg="${cfg_dir}/.golangci.yml"
+          mkdir -p "${cfg_dir}"
+          rules_url="https://raw.githubusercontent.com/grafana/k6-ci/${K6_CI_REF}/.golangci.yml"
+          echo "Downloading '${rules_url}' ..."
+          curl --silent --show-error --fail --no-location "${rules_url}" --output "${cfg}"
+
+          patch_file="${GITHUB_WORKSPACE}/.golangci.patch"
+          if [ -f "${patch_file}" ]; then
+            echo "Applying '${patch_file}' ..."
+            git -C "${GITHUB_WORKSPACE}" apply --directory=.k6-ci-lint "${patch_file}"
+          fi
+
+          echo "version=$(head -n 1 "${cfg}" | tr -d '# ')" >> "${GITHUB_OUTPUT}"
+          echo "config=${cfg}" >> "${GITHUB_OUTPUT}"
+        id: cfg
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
+        with:
+          version: ${{ steps.cfg.outputs.version }}
+          args: "--config=${{ steps.cfg.outputs.config }}"
 
   test-go-versions:
+    if: ${{ !inputs.skip-tests }}
     strategy:
       fail-fast: false
       matrix:
@@ -104,7 +150,7 @@ jobs:
 
   extension-build-testing:
     runs-on: ubuntu-latest
-    if: ${{ github.event.inputs.skip-extension-testing != true }}
+    if: ${{ !inputs.skip-extension-testing }}
     steps:
       - name: Checkout code
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6

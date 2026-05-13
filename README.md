@@ -1,6 +1,6 @@
 # k6-ci
 
-Re-usable CI workflows and GitHub Actions for k6 and k6 extension development.
+Re-usable CI workflows for k6 and k6 extension development.
 
 ## Quick start (k6 extension)
 
@@ -17,11 +17,11 @@ The pinned `@<ref>` drives everything: CI config, golangci-lint version, and (vi
 
 ## Shared golangci-lint config
 
-`.golangci.yml` here is the canonical config. Line 1 (`# vX.Y.Z`) pins the golangci-lint version; everything below is the ruleset. The action downloads it from this repo at the caller's pinned ref.
+`.golangci.yml` here is the canonical config. Line 1 (`# vX.Y.Z`) pins the golangci-lint version; everything below is the ruleset. The `all.yml` reusable workflow's `lint` job downloads it from this repo at the ref passed via the `k6-ci-ref` input (defaults to `main`). For reproducible CI, pin it to the same SHA as the `uses:` line.
 
 ### Project-specific tweaks
 
-Drop a `.golangci.patch` at your repo root — a unified diff against `.golangci.yml`. The action applies it before linting. No patch file → base runs as-is.
+Drop a `.golangci.patch` at your repo root — a unified diff against `.golangci.yml`. The workflow applies it before linting. No patch file → base runs as-is.
 
 Workflow for editing the patch:
 
