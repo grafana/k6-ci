@@ -18,13 +18,9 @@ help:
 build:
 	xk6 build --with $(shell go list -m)=.
 
-## linter-config: Checks if the linter config exists, if not, downloads it from the main k6 repository.
-linter-config:
-	test -s "${GOLANGCI_CONFIG}" || (echo "No linter config, downloading from main k6 repository..." && curl --silent --show-error --fail --no-location https://raw.githubusercontent.com/grafana/k6/master/.golangci.yml --output "${GOLANGCI_CONFIG}")
-
-## check-linter-version: Checks if the linter version is the same as the one specified in the linter config.
+## check-linter-version: Warns if the installed golangci-lint differs from the version pinned on line 1 of $(GOLANGCI_CONFIG).
 check-linter-version:
-	(golangci-lint version | grep "version $(shell head -n 1 .golangci.yml | tr -d '\# ')") || echo "Your installation of golangci-lint is different from the one that is specified in k6's linter config (there it's $(shell head -n 1 .golangci.yml | tr -d '\# ')). Results could be different in the CI."
+	(golangci-lint version | grep "version $(shell head -n 1 $(GOLANGCI_CONFIG) | tr -d '\# ')") || echo "Your installation of golangci-lint differs from the one pinned in $(GOLANGCI_CONFIG) ($(shell head -n 1 $(GOLANGCI_CONFIG) | tr -d '\# ')). CI results may differ."
 
 ## test: Executes any tests.
 test:
@@ -32,7 +28,7 @@ test:
 	go test -race -timeout 30s ./...
 
 ## lint: Runs the linters.
-lint: linter-config check-linter-version
+lint: check-linter-version
 	echo "Running linters..."
 	golangci-lint run ./...
 
@@ -43,6 +39,5 @@ check: lint test
 clean:
 	echo "Cleaning up..."
 	rm -f ./k6
-	rm .golangci.yml
 
-.PHONY: test clean help lint check build linter-config
+.PHONY: test clean help lint check build
