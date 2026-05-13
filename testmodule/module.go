@@ -2,7 +2,7 @@
 // test the CI's steps like linting, testing, and building.
 package testmodule
 
-import "go.k6.io/k6/js/modules"
+import "go.k6.io/k6/v2/js/modules"
 
 type (
 	// RootModule .
