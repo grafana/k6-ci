@@ -61,8 +61,9 @@ jobs:
       - name: Run k6's golangci-lint CI
         # Same repo as this workflow. Must point at a ref of grafana/k6-ci
         # because `./` in a workflow_call resolves to the caller's workspace,
-        # not k6-ci's. Keep this ref aligned with releases of this workflow.
-        uses: grafana/k6-ci/.github/actions/lint@main
+        # not k6-ci's. Keep this ref aligned with releases of this workflow;
+        # bump to @main (or a tagged release) once this branch lands.
+        uses: grafana/k6-ci/.github/actions/lint@72a6e5968a5e94ad268c209630a87f3bdce47c16 # lint-action branch HEAD
 
   test-go-versions:
     strategy:
