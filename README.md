@@ -26,10 +26,12 @@ Drop a `.golangci.patch` at your repo root — a unified diff against `.golangci
 Workflow for editing the patch:
 
 ```sh
-make lint                # materializes build/lint/.golangci.yml (the effective config)
-$EDITOR build/lint/.golangci.yml
+make lint                # materializes .golangci.yml at the repo root (effective config)
+$EDITOR .golangci.yml
 make update-lint-patch   # rewrites .golangci.patch from the edits
 ```
+
+Both `.golangci-base.yml` (cached download) and `.golangci.yml` (assembled) should be gitignored.
 
 Constraints:
 
@@ -44,10 +46,11 @@ Constraints:
 |---|---|
 | `lint` | Download base, apply patch, run golangci-lint at the pinned version. |
 | `update-lint-patch` | Regenerate `.golangci.patch` from the locally edited `$(LINT_FINAL)`. |
-| `clean-lint` | Remove `$(LINT_DIR)`. |
+| `clean-lint` | Remove `$(LINT_BASE)` and `$(LINT_FINAL)`. |
 
 Override variables on the command line (or in your top-level Makefile):
 
 - `WORKFLOW` — file to read the k6-ci ref from. Default `.github/workflows/k6-ci.yml`.
-- `LINT_DIR` — where the assembled config lives. Default `build/lint`.
+- `LINT_BASE` — cached download path. Default `.golangci-base.yml`.
+- `LINT_FINAL` — assembled config path. Default `.golangci.yml`.
 - `LINT_PATCH` — patch file path. Default `.golangci.patch`.
