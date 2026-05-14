@@ -68,8 +68,19 @@ jobs:
       - name: Check dependencies
         run: |
           go version
-          test -z "$(go mod tidy  && git status --porcelain)"
+          go mod tidy
+          # If the caller's repo vendors dependencies, also verify that
+          # `vendor/` is in sync with go.mod. The presence of a top-level
+          # `vendor/` directory is the trigger; no input needed.
+          if [ -d vendor ]; then
+            go mod vendor
+          fi
           go mod verify
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "Working tree dirty after go mod tidy/vendor:"
+            git status --porcelain
+            exit 1
+          fi
 
   lint:
     runs-on: ubuntu-latest
