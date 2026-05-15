@@ -22,5 +22,6 @@ runs:
         if [ -n "$(git status --porcelain)" ]; then
           echo "Working tree dirty after go mod tidy/vendor:"
           git status --porcelain
+          git --no-pager diff
           exit 1
         fi
