@@ -1,0 +1,26 @@
+name: k6-deps-check
+description: |
+  Run `go mod tidy` (and `go mod vendor`, if a `vendor/` directory is
+  present), then `go mod verify`. Fail if the working tree is dirty after.
+
+  Caller responsibilities (before invoking this action): `actions/checkout`,
+  `actions/setup-go`, plus any private-module auth (e.g. ssh-agent +
+  `git config --global url.<...>.insteadOf <...>`).
+
+runs:
+  using: composite
+  steps:
+    - name: Check dependencies
+      shell: bash
+      run: |
+        go version
+        go mod tidy
+        if [ -d vendor ]; then
+          go mod vendor
+        fi
+        go mod verify
+        if [ -n "$(git status --porcelain)" ]; then
+          echo "Working tree dirty after go mod tidy/vendor:"
+          git status --porcelain
+          exit 1
+        fi
