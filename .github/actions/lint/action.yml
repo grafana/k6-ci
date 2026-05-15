@@ -1,0 +1,65 @@
+name: golangci-lint-k6
+description: |
+  Download the canonical k6 golangci-lint config from grafana/k6-ci at a
+  specified ref, apply an optional `.golangci.patch` from the caller's
+  workspace, then run golangci-lint at the version pinned on line 1 of the
+  config.
+
+  Caller responsibilities (before invoking this action): `actions/checkout`
+  and `actions/setup-go`, plus any credential setup needed to lint private
+  code (the action itself doesn't touch the network beyond the config download).
+
+inputs:
+  ref:
+    required: false
+    default: ""
+    description: |
+      Ref of grafana/k6-ci to fetch `.golangci.yml` from. Resolution order:
+        1. This input, if non-empty.
+        2. `github.action_ref`, if the action was invoked as
+           `grafana/k6-ci/.github/actions/lint@<ref>` (direct caller).
+        3. In-tree `${GITHUB_WORKSPACE}/.golangci.yml`, if the file exists
+           (k6-ci's own CI on a PR).
+        4. `main`.
+
+runs:
+  using: composite
+  steps:
+    - name: Build golangci config
+      shell: bash
+      env:
+        REF_INPUT: ${{ inputs.ref }}
+        ACTION_REF: ${{ github.action_ref }}
+      run: |
+        cfg_dir="${GITHUB_WORKSPACE}/.k6-ci-lint"
+        cfg="${cfg_dir}/.golangci.yml"
+        mkdir -p "${cfg_dir}"
+
+        ref="${REF_INPUT:-${ACTION_REF}}"
+        if [ -n "${ref}" ]; then
+          rules_url="https://raw.githubusercontent.com/grafana/k6-ci/${ref}/.golangci.yml"
+          echo "Downloading '${rules_url}' ..."
+          curl --silent --show-error --fail --no-location "${rules_url}" --output "${cfg}"
+        elif [ -f "${GITHUB_WORKSPACE}/.golangci.yml" ]; then
+          echo "Using in-tree .golangci.yml from caller workspace"
+          cp "${GITHUB_WORKSPACE}/.golangci.yml" "${cfg}"
+        else
+          echo "Downloading .golangci.yml from grafana/k6-ci@main (fallback)"
+          curl --silent --show-error --fail --no-location \
+            "https://raw.githubusercontent.com/grafana/k6-ci/main/.golangci.yml" --output "${cfg}"
+        fi
+
+        patch_file="${GITHUB_WORKSPACE}/.golangci.patch"
+        if [ -f "${patch_file}" ]; then
+          echo "Applying '${patch_file}' ..."
+          git -C "${GITHUB_WORKSPACE}" apply --directory=.k6-ci-lint "${patch_file}"
+        fi
+
+        echo "version=$(head -n 1 "${cfg}" | tr -d '# ')" >> "${GITHUB_OUTPUT}"
+        echo "config=${cfg}" >> "${GITHUB_OUTPUT}"
+      id: cfg
+    - name: golangci-lint
+      uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
+      with:
+        version: ${{ steps.cfg.outputs.version }}
+        args: "--config=${{ steps.cfg.outputs.config }}"
