@@ -1,0 +1,133 @@
+# Approve Renovate PRs after ALL CI checks pass.
+#
+# Renovate marks trusted PRs with "Automerge: Enabled" via the shared
+# k6-engine-automerge preset. This workflow sweeps for those PRs, verifies
+# every check run and commit status is green, and approves via k6-core-bot.
+# Renovate then merges on its next poll (platformAutomerge: false).
+#
+# Callers add a thin wrapper:
+#
+#   name: Auto-approve Renovate
+#   on:
+#     schedule:
+#       - cron: '1 * * * *'
+#     workflow_dispatch:
+#   permissions:
+#     contents: read
+#     pull-requests: read
+#     checks: read
+#     statuses: read
+#     id-token: write
+#   jobs:
+#     approve:
+#       uses: grafana/k6-ci/.github/workflows/auto-approve-renovate.yml@<sha>
+#
+# Each calling repo also needs:
+#   1. k6-core-bot installed on the repo (ask #platform-infrasec-chat)
+#   2. config.yaml in deployment_tools/terraform/repositories/<repo>/github-app-configs/
+#   3. Branch protection requiring 1 approval
+name: Auto-approve Renovate
+on:
+  workflow_call:
+
+jobs:
+  approve:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+      checks: read
+      statuses: read
+      id-token: write
+    steps:
+      - name: Find approvable Renovate PRs
+        id: prs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PRS=$(gh pr list --repo "$GITHUB_REPOSITORY" --author 'app/renovate-sh-app' --json number,body \
+            --jq '[.[] | select(.body | contains("**Automerge**: Enabled"))] | [.[].number]')
+
+          if [ "$PRS" = "[]" ] || [ -z "$PRS" ]; then
+            echo "No eligible Renovate PRs"
+            echo "pairs=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          APPROVE=""
+          for PR in $(echo "$PRS" | jq -r '.[]'); do
+            PR_INFO=$(gh pr view "$PR" --repo "$GITHUB_REPOSITORY" --json headRefOid,mergeable,reviews)
+
+            MERGEABLE=$(echo "$PR_INFO" | jq -r '.mergeable')
+            if [ "$MERGEABLE" != "MERGEABLE" ]; then
+              echo "PR #$PR is not mergeable ($MERGEABLE), skipping"
+              continue
+            fi
+
+            ALREADY=$(echo "$PR_INFO" | jq '[.reviews[] | select(.author.login == "k6-core-bot" and .state == "APPROVED")] | length')
+            if [ "$ALREADY" -gt 0 ]; then
+              echo "PR #$PR already approved, skipping"
+              continue
+            fi
+
+            SHA=$(echo "$PR_INFO" | jq -r '.headRefOid')
+
+            # Check runs (GitHub Actions, etc.). Paginate and merge pages via jq.
+            CHECKS=$(gh api --paginate "repos/$GITHUB_REPOSITORY/commits/$SHA/check-runs" \
+              --jq '[.check_runs[] | select(.name != "approve") | {name, status, conclusion}]' | jq -s 'add // []')
+
+            # Commit statuses, excluding Renovate-internal ones.
+            STATUSES=$(gh api --paginate "repos/$GITHUB_REPOSITORY/commits/$SHA/status" \
+              --jq '[.statuses[] | select(.context | startswith("renovate/") | not) | {context, state}]' | jq -s 'add // []')
+
+            if [ "$(echo "$CHECKS" | jq 'length')" -eq 0 ] && [ "$(echo "$STATUSES" | jq 'length')" -eq 0 ]; then
+              echo "PR #$PR has no checks, skipping"
+              continue
+            fi
+
+            # A check run passes only when completed with a non-failing conclusion;
+            # cancelled, timed_out, action_required and stale must block.
+            C_BAD=$(echo "$CHECKS" | jq '[.[] | select(.status == "completed" and ([.conclusion] | inside(["success","neutral","skipped"]) | not))] | length')
+            S_BAD=$(echo "$STATUSES" | jq '[.[] | select(.state == "failure" or .state == "error")] | length')
+            if [ "$C_BAD" -gt 0 ] || [ "$S_BAD" -gt 0 ]; then
+              echo "PR #$PR has failed checks, skipping"
+              continue
+            fi
+
+            C_PENDING=$(echo "$CHECKS" | jq '[.[] | select(.status != "completed")] | length')
+            S_PENDING=$(echo "$STATUSES" | jq '[.[] | select(.state == "pending")] | length')
+            if [ "$C_PENDING" -gt 0 ] || [ "$S_PENDING" -gt 0 ]; then
+              echo "PR #$PR has pending checks, skipping"
+              continue
+            fi
+
+            echo "PR #$PR ready for approval"
+            APPROVE="$APPROVE $PR:$SHA"
+          done
+
+          echo "pairs=$APPROVE" >> "$GITHUB_OUTPUT"
+
+      - name: Create token
+        if: steps.prs.outputs.pairs != ''
+        id: token
+        uses: grafana/shared-workflows/actions/create-github-app-token@259ba21cb3ff07724f331e26d926d655d24b317b # create-github-app-token/v0.2.3
+        with:
+          github_app: k6-core-bot
+
+      - name: Approve PRs
+        if: steps.prs.outputs.pairs != ''
+        env:
+          GH_TOKEN: ${{ steps.token.outputs.token }}
+          PR_PAIRS: ${{ steps.prs.outputs.pairs }}
+        run: |
+          for ITEM in $PR_PAIRS; do
+            PR="${ITEM%%:*}"
+            SHA="${ITEM#*:}"
+            CUR=$(gh pr view "$PR" --repo "$GITHUB_REPOSITORY" --json headRefOid --jq '.headRefOid')
+            if [ "$CUR" != "$SHA" ]; then
+              echo "PR #$PR head moved since validation ($SHA -> $CUR), skipping"
+              continue
+            fi
+            echo "Approving PR #$PR"
+            gh pr review "$PR" --repo "$GITHUB_REPOSITORY" --approve
+          done
