@@ -3,7 +3,7 @@ package test
 
 import (
 	"github.com/grafana/k6-ci/testmodule"
-	"go.k6.io/k6/js/modules"
+	"go.k6.io/k6/v2/js/modules"
 )
 
 func init() {
