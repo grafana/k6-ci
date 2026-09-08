@@ -1,4 +1,4 @@
-# v2.10.1
+# v2.13.2
 # Please don't remove the first line. It is used by CI and tooling to determine
 # the golangci-lint version. Consumers may add a `.golangci.patch` to extend or
 # override anything below; see README.md.

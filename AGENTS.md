@@ -10,6 +10,41 @@ Data flows outward: extensions call in, and the workflow pulls external artifact
 
 Go tip is sourced from `grafana/gotip` GitHub releases. The release tag matches the runner platform name (e.g., `ubuntu-latest`).
 
+## Updating golangci-lint
+
+1. Read the current version from line 1 of `.golangci.yml`. Query the latest stable release (not a draft or prerelease) with:
+
+   ```sh
+   gh api repos/golangci/golangci-lint/releases/latest --jq '{tag_name,html_url,published_at,draft,prerelease}'
+   ```
+
+2. Read the release notes for every stable release between the current and target versions. Do not look only for new top-level linters: upgrades can add analyzers to already-enabled aggregate linters such as `govet` or `staticcheck`.
+
+3. Compare the official linter inventories at the two tags. This avoids depending on locally installed binaries:
+
+   ```sh
+   comm -13 \
+     <(gh api 'repos/golangci/golangci-lint/contents/docs/data/linters_info.json?ref=vOLD' --jq .content | base64 --decode | jq -r '.[].name' | sort) \
+     <(gh api 'repos/golangci/golangci-lint/contents/docs/data/linters_info.json?ref=vNEW' --jq .content | base64 --decode | jq -r '.[].name' | sort)
+   ```
+
+   Inspect each new entry's complete JSON object too, especially `since`, `isSlow`, `deprecation`, `replacement`, and `originalURL`. A renamed major-version replacement is not a genuinely new check.
+
+4. Evaluate genuinely new checks for correctness value, applicability across all consumers, false-positive risk, speed, required configuration, and maintenance cost. Keep dependency-specific or highly opinionated checks out of the shared base; downstream repositories can enable them with `.golangci.patch`. Record the decision and rationale in the pull request.
+
+5. Change the version comment on line 1, preserving its exact `# vX.Y.Z` format. If adopting a new linter, add its configuration explicitly and consider whether downstream `.golangci.patch` files still apply.
+
+6. Validate with the exact target golangci-lint version:
+
+   ```sh
+   golangci-lint config verify --config .golangci.yml
+   golangci-lint run --config .golangci.yml ./...
+   go test ./...
+   git diff --check
+   ```
+
+   When the ruleset body changes, also apply representative downstream `.golangci.patch` files with `git apply --check` against the updated base. The `self-test.yml` workflow must pass because it exercises the in-tree action; `all.yml` alone tests the action already on `main`.
+
 ## Gotchas
 
 - Go caching is disabled in all CI jobs (`cache: false`) to prevent cache-poisoning. Local builds will always be faster than CI.
