@@ -55,24 +55,23 @@ jobs:
   configure:
     runs-on: ubuntu-latest
     outputs:
-      go_current: ${{ steps.local.outputs.current || steps.remote.outputs.current }}
-      go_prev: ${{ steps.local.outputs.prev || steps.remote.outputs.prev }}
+      go_current: ${{ steps.go_versions.outputs.current }}
+      go_prev: ${{ steps.go_versions.outputs.prev }}
     steps:
-      - name: Checkout code
-        if: github.repository == 'grafana/k6-ci'
+      - name: Checkout k6-ci Go versions
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
+          repository: grafana/k6-ci
+          ref: ${{ inputs.k6-ci-ref || github.sha }}
+          path: .k6-ci
           persist-credentials: false
+          sparse-checkout: |
+            .github/actions/go-versions
+            .github/go-versions.env
+          sparse-checkout-cone-mode: false
       - name: Resolve Go versions
-        if: github.repository == 'grafana/k6-ci'
-        id: local
-        uses: ./.github/actions/go-versions
-      # A local action path resolves in the caller's workspace under
-      # workflow_call, so downstream calls must use the action from k6-ci.
-      - name: Resolve Go versions for downstream workflow
-        if: github.repository != 'grafana/k6-ci'
-        id: remote
-        uses: grafana/k6-ci/.github/actions/go-versions@main
+        id: go_versions
+        uses: ./.k6-ci/.github/actions/go-versions
 
   dependencies:
     needs: configure
