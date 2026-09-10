@@ -7,13 +7,17 @@ Re-usable CI workflows for k6 and k6 extension development.
 1. Copy [`templates/k6-ci.yml`](templates/k6-ci.yml) to `.github/workflows/k6-ci.yml` and pin `@main` to a SHA. This calls the reusable workflow which runs:
    - `go mod tidy && go mod verify` dependency check
    - golangci-lint (canonical config + optional `.golangci.patch`)
-   - tests on Go 1.25/1.26/tip × ubuntu/windows
+   - tests on the current, previous, and tip Go versions × ubuntu/windows
    - xk6 build check
 2. Optionally copy [`templates/Makefile`](templates/Makefile) for `make lint` locally.
 
 If your repo isn't an xk6 extension (library, k6 itself, etc.), flip `skip-extension-testing: true` in your copy of `k6-ci.yml`.
 
 The pinned `@<ref>` drives everything: CI config, golangci-lint version, and (via the Makefile's grep) local lint.
+
+The current and previous Go versions are defined once in
+`.github/go-versions.env` and exposed to workflows by the `go-versions`
+composite action.
 
 ## Shared golangci-lint config
 

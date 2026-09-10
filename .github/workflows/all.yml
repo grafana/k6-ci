@@ -52,7 +52,30 @@ permissions:
   contents: read
 
 jobs:
+  configure:
+    runs-on: ubuntu-latest
+    outputs:
+      go_current: ${{ steps.local.outputs.current || steps.remote.outputs.current }}
+      go_prev: ${{ steps.local.outputs.prev || steps.remote.outputs.prev }}
+    steps:
+      - name: Checkout code
+        if: github.repository == 'grafana/k6-ci'
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with:
+          persist-credentials: false
+      - name: Resolve Go versions
+        if: github.repository == 'grafana/k6-ci'
+        id: local
+        uses: ./.github/actions/go-versions
+      # A local action path resolves in the caller's workspace under
+      # workflow_call, so downstream calls must use the action from k6-ci.
+      - name: Resolve Go versions for downstream workflow
+        if: github.repository != 'grafana/k6-ci'
+        id: remote
+        uses: grafana/k6-ci/.github/actions/go-versions@main
+
   dependencies:
+    needs: configure
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -62,7 +85,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
         with:
-          go-version: 1.26.x
+          go-version: ${{ needs.configure.outputs.go_current }}
           cache: false # against cache-poisoning
           check-latest: true
       # Pinned to main rather than `./.github/actions/deps` because the
@@ -73,6 +96,7 @@ jobs:
       - uses: grafana/k6-ci/.github/actions/deps@main
 
   lint:
+    needs: configure
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -83,7 +107,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
         with:
-          go-version: 1.26.x
+          go-version: ${{ needs.configure.outputs.go_current }}
           cache: false # against cache-poisoning
           check-latest: true
       - uses: grafana/k6-ci/.github/actions/lint@main
@@ -91,11 +115,15 @@ jobs:
           ref: ${{ inputs.k6-ci-ref }}
 
   test-go-versions:
+    needs: configure
     if: ${{ !inputs.skip-tests }}
     strategy:
       fail-fast: false
       matrix:
-        go-version: [1.25.x, 1.26.x, tip]
+        go-version:
+          - "${{ needs.configure.outputs.go_prev }}"
+          - "${{ needs.configure.outputs.go_current }}"
+          - tip
         platform: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.platform }}
     steps:
@@ -129,6 +157,7 @@ jobs:
           go test -race -timeout 800s ./...
 
   extension-build-testing:
+    needs: configure
     runs-on: ubuntu-latest
     if: ${{ !inputs.skip-extension-testing }}
     steps:
@@ -137,7 +166,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
         with:
-          go-version: 1.26.x
+          go-version: ${{ needs.configure.outputs.go_current }}
           cache: false # against cache-poisoning
           check-latest: true
       - name: Check build
