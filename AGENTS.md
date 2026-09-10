@@ -8,7 +8,7 @@ The single reusable workflow is the repo's product. Downstream k6 extensions ref
 
 Data flows outward: extensions call in, and the workflow pulls external artifacts at runtime. The canonical `.golangci.yml` lives here; the composite action at `.github/actions/lint/` downloads it at the caller's pinned ref and optionally applies a `.golangci.patch` from the caller's workspace. The `.github/actions/deps/` composite action handles the `go mod tidy` + optional vendor sync + `go mod verify` check; callers compose it themselves when they need to wire up private-module credentials first. The `extension-build-testing` job installs `xk6` from master, not a pinned version.
 
-Go tip is sourced from `grafana/gotip` GitHub releases. The release tag matches the runner platform name (e.g., `ubuntu-latest`).
+The current and previous Go versions are defined in `.github/go-versions.env` and exposed by `.github/actions/go-versions/`. Go tip is sourced from `grafana/gotip` GitHub releases. The release tag matches the runner platform name (e.g., `ubuntu-latest`).
 
 ## Updating golangci-lint
 

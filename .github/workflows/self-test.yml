@@ -20,7 +20,21 @@ permissions:
   contents: read
 
 jobs:
+  configure:
+    runs-on: ubuntu-latest
+    outputs:
+      go_current: ${{ steps.go_versions.outputs.current }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with:
+          persist-credentials: false
+      - name: Resolve Go versions
+        id: go_versions
+        uses: ./.github/actions/go-versions
+
   deps:
+    needs: configure
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -30,12 +44,13 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
         with:
-          go-version: 1.26.x
+          go-version: ${{ needs.configure.outputs.go_current }}
           cache: false # against cache-poisoning
           check-latest: true
       - uses: ./.github/actions/deps
 
   lint:
+    needs: configure
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -46,7 +61,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
         with:
-          go-version: 1.26.x
+          go-version: ${{ needs.configure.outputs.go_current }}
           cache: false # against cache-poisoning
           check-latest: true
       # No `ref` input — the action falls back to the in-tree .golangci.yml,
