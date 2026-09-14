@@ -9,7 +9,16 @@ Re-usable CI workflows for k6 and k6 extension development.
    - golangci-lint (canonical config + optional `.golangci.patch`)
    - tests on the current, previous, and tip Go versions × ubuntu/windows
    - xk6 build check
-2. Optionally copy [`templates/Makefile`](templates/Makefile) for `make lint` locally.
+2. Copy [`templates/Makefile`](templates/Makefile), or integrate its equivalent
+   targets into the repository's existing local tooling. Repositories adopting
+   k6-ci are expected to provide this local path for running the same pinned
+   lint configuration. When integrating into an existing Makefile and the
+   repository has no `.golangci.patch`, keep the integration minimal: don't add
+   patch application or patch-generation targets in anticipation of a patch.
+
+Exceptions should be deliberate and documented in the adopting pull request.
+For example, a repository may already provide equivalent commands through
+another task runner, or may intentionally not support local Go development.
 
 If your repo isn't an xk6 extension (library, k6 itself, etc.), flip `skip-extension-testing: true` in your copy of `k6-ci.yml`.
 
@@ -25,7 +34,14 @@ composite action.
 
 ### Project-specific tweaks
 
-Drop a `.golangci.patch` at your repo root — a unified diff against `.golangci.yml`. The workflow applies it before linting. No patch file → base runs as-is.
+`.golangci.patch` is optional and should be a last resort. Prefer fixing the
+code, or changing the shared configuration here when the rule is unsuitable for
+all consumers. Add a patch only for a repository-specific constraint where
+changing the code or the shared base would be inappropriate. No patch file →
+base runs as-is.
+
+When a patch is necessary, add it at the repository root as a unified diff
+against `.golangci.yml`. The workflow applies it before linting.
 
 Workflow for editing the patch:
 
@@ -39,10 +55,20 @@ Both `.golangci-base.yml` (cached download) and `.golangci.yml` (assembled) shou
 
 Constraints:
 
+- Don't add an empty or preemptive patch.
 - Don't edit line 1 of the base in your patch; bump the linter version here in k6-ci.
 - If the base shifts and your patch no longer applies, the lint job fails — regenerate and commit.
 
 ## Makefile reference
+
+The template is the default local tooling for repositories using k6-ci. It may
+be integrated into an existing Makefile instead of copied verbatim, as long as
+the resulting lint command uses the caller workflow's pinned k6-ci ref and runs
+the pinned golangci-lint version with the canonical config. If the repository
+has a `.golangci.patch`, local tooling must also assemble the canonical config
+plus that patch. Don't expand an existing Makefile with patch-specific plumbing
+when no patch exists. Repositories without a local equivalent should document
+why they are an exception.
 
 `templates/Makefile` targets:
 
