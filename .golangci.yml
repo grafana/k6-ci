@@ -97,6 +97,7 @@ linters:
           - forcetypeassert
           - funlen
           - gocognit
+          - goconst
           - lll
           - gosec
         path: _(test|gen)\.go
