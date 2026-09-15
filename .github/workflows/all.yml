@@ -123,7 +123,7 @@ jobs:
           - "${{ needs.configure.outputs.go_prev }}"
           - "${{ needs.configure.outputs.go_current }}"
           - tip
-        platform: [ubuntu-latest, windows-latest]
+        platform: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.platform }}
     steps:
       - name: Checkout code
