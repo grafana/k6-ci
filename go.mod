@@ -1,6 +1,6 @@
 module github.com/grafana/k6-ci
 
-go 1.25.0
+go 1.26.0
 
 toolchain go1.26.8
 
