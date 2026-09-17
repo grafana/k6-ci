@@ -7,7 +7,7 @@ Re-usable CI workflows for k6 and k6 extension development.
 1. Copy [`templates/k6-ci.yml`](templates/k6-ci.yml) to `.github/workflows/k6-ci.yml` and pin `@main` to a SHA. This calls the reusable workflow which runs:
    - `go mod tidy && go mod verify` dependency check
    - golangci-lint (canonical config + optional `.golangci.patch`)
-   - tests on the current, previous, and tip Go versions × ubuntu/windows
+   - tests on the current, previous, and tip Go versions × ubuntu/windows/macOS
    - xk6 build check
 2. Copy [`templates/Makefile`](templates/Makefile), or integrate its equivalent
    targets into the repository's existing local tooling. Repositories adopting
