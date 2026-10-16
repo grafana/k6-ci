@@ -92,7 +92,7 @@ jobs:
       # not k6-ci's. PRs to k6-ci that modify this action need to be
       # exercised via workflow_dispatch or a downstream caller pinned to
       # the PR's SHA, not via all.yml's own PR checks.
-      - uses: grafana/k6-ci/.github/actions/deps@main
+      - uses: grafana/k6-ci/.github/actions/deps@7dc7a71c57a30eddd3f1591ee0cc5abaeedafa14 # main
 
   lint:
     needs: configure
@@ -109,7 +109,7 @@ jobs:
           go-version: ${{ needs.configure.outputs.go_current }}
           cache: false # against cache-poisoning
           check-latest: true
-      - uses: grafana/k6-ci/.github/actions/lint@main
+      - uses: grafana/k6-ci/.github/actions/lint@7dc7a71c57a30eddd3f1591ee0cc5abaeedafa14 # main
         with:
           ref: ${{ inputs.k6-ci-ref }}
 
