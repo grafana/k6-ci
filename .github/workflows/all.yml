@@ -18,9 +18,10 @@ on:
         default: main
         type: string
         description: >
-          The ref of grafana/k6-ci to download .golangci.yml from. Defaults to
-          `main`. Callers that pin this workflow to a SHA should pass the same
-          SHA here to get a matching config.
+          The ref of grafana/k6-ci to load composite actions, Go versions, and
+          .golangci.yml from. Defaults to `main`. Callers that pin this workflow
+          to a SHA should pass the same SHA here to get matching actions and
+          config.
   # Enable manually triggering this workflow via the API or web UI
   workflow_dispatch:
     inputs:
@@ -87,12 +88,22 @@ jobs:
           go-version: ${{ needs.configure.outputs.go_current }}
           cache: false # against cache-poisoning
           check-latest: true
-      # Pinned to main rather than `./.github/actions/deps` because the
-      # latter resolves to the caller's workspace under workflow_call —
-      # not k6-ci's. PRs to k6-ci that modify this action need to be
-      # exercised via workflow_dispatch or a downstream caller pinned to
-      # the PR's SHA, not via all.yml's own PR checks.
-      - uses: grafana/k6-ci/.github/actions/deps@main
+      # Checked out into `.k6-ci` rather than referenced as `./.github/actions/deps`
+      # (which resolves to the caller's workspace under workflow_call) or
+      # `grafana/k6-ci/.github/actions/deps@main` (which fails SHA-pinning policies
+      # and ignores the caller's pinned ref).
+      - name: Checkout k6-ci deps action
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with:
+          repository: grafana/k6-ci
+          ref: ${{ inputs.k6-ci-ref || github.sha }}
+          path: .k6-ci
+          persist-credentials: false
+          sparse-checkout: .github/actions/deps
+          sparse-checkout-cone-mode: false
+      - name: Exclude k6-ci checkout from git status
+        run: echo "/.k6-ci/" >> .git/info/exclude
+      - uses: ./.k6-ci/.github/actions/deps
 
   lint:
     needs: configure
@@ -109,7 +120,16 @@ jobs:
           go-version: ${{ needs.configure.outputs.go_current }}
           cache: false # against cache-poisoning
           check-latest: true
-      - uses: grafana/k6-ci/.github/actions/lint@main
+      - name: Checkout k6-ci lint action
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with:
+          repository: grafana/k6-ci
+          ref: ${{ inputs.k6-ci-ref || github.sha }}
+          path: .k6-ci
+          persist-credentials: false
+          sparse-checkout: .github/actions/lint
+          sparse-checkout-cone-mode: false
+      - uses: ./.k6-ci/.github/actions/lint
         with:
           ref: ${{ inputs.k6-ci-ref }}
 

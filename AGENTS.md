@@ -43,7 +43,7 @@ The current and previous Go versions are defined in `.github/go-versions.env` an
    git diff --check
    ```
 
-   When the ruleset body changes, also apply representative downstream `.golangci.patch` files with `git apply --check` against the updated base. The `self-test.yml` workflow must pass because it exercises the in-tree action; `all.yml` alone tests the action already on `main`.
+   When the ruleset body changes, also apply representative downstream `.golangci.patch` files with `git apply --check` against the updated base. Both `all.yml` and `self-test.yml` must pass before merging.
 
 ## Gotchas
 
@@ -53,4 +53,4 @@ The current and previous Go versions are defined in `.github/go-versions.env` an
 - Line 1 of `.golangci.yml` is the golangci-lint version pin (`# vX.Y.Z`). Tooling reads it; do not remove the comment.
 - The test file is intentionally named `mudule_test.go`. Do not rename it.
 - The workflow's `skip-extension-testing` input is compared with `!= true` (not `!= 'true'`). GitHub coerces booleans for `workflow_dispatch` but not always for `workflow_call`; callers must pass a real boolean.
-- **Self-CI gap on action changes**: `all.yml` references `.github/actions/{deps,lint}` as `grafana/k6-ci/...@main`, not `./`, because `./` resolves to the caller's workspace under workflow_call. Consequence: a PR to k6-ci that modifies one of those actions runs all.yml against the *merged* version of the action, not the PR's. The companion workflow `self-test.yml` uses `./` paths on push/PR to k6-ci and exercises the PR's version. Both should pass before merging an action change.
+- **Composite actions in `all.yml`**: `all.yml` cannot reference `.github/actions/{go-versions,deps,lint}` directly via `./.github/actions/...` because `./` resolves to the caller's workspace under `workflow_call`, nor via `grafana/k6-ci/.github/actions/...@main` because branch refs fail organization SHA-pinning policies and ignore the caller's pinned version. Instead, each job sparse-checks out `grafana/k6-ci` at `inputs.k6-ci-ref || github.sha` into `.k6-ci` and invokes `./.k6-ci/.github/actions/...` (excluding `/.k6-ci/` via `.git/info/exclude` where a clean working tree is asserted).
