@@ -1,10 +1,6 @@
-# Exercises the composite actions under .github/actions/ from the local
-# checkout (via `./` paths) on every push/PR to k6-ci, so action changes
-# are validated before merge.
-#
-# all.yml uses `grafana/k6-ci/.github/actions/...@main` and therefore runs
-# the merged version, not the PR's. This workflow fills that gap.
-# See AGENTS.md ("Self-CI gap on action changes").
+# Exercises the composite actions under .github/actions/ directly from the
+# working tree (via `./` paths) on every push/PR to k6-ci, validating action
+# changes without an extra `.k6-ci` sparse-checkout step.
 
 name: Self test
 on:
