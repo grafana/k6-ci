@@ -3,5 +3,15 @@
   "extends": [
     "github>grafana/grafana-renovate-config//presets/k6/k6-engine-base.json",
     "github>grafana/grafana-renovate-config//presets/k6/k6-engine-automerge.json"
+  ],
+  "packageRules": [
+    {
+      "description": "all.yml references its own composite actions via @main on purpose. Do not pin those to digests.",
+      "matchManagers": ["github-actions"],
+      "matchFileNames": [".github/workflows/all.yml"],
+      "matchPackageNames": ["grafana/k6-ci"],
+      "matchUpdateTypes": ["pinDigest"],
+      "enabled": false
+    }
   ]
 }
